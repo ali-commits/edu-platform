@@ -4,9 +4,6 @@
 # We typically don't want to commit real passwords or secrets
 .env
 
-# If you have any extra environment-specific files, e.g. .env.production
-*.env.*
-
 # ─────────────────────────────────────────────────────────────
 # Traefik ACME (SSL Certificates)
 # ─────────────────────────────────────────────────────────────
