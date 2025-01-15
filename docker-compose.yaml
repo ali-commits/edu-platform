@@ -104,7 +104,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: opensis-custom
     container_name: opensis
     restart: unless-stopped
     environment:
