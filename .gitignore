@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────
+# Environment & Credentials Files
+# ─────────────────────────────────────────────────────────────
+# We typically don't want to commit real passwords or secrets
+.env
+
+# If you have any extra environment-specific files, e.g. .env.production
+*.env.*
+
+# ─────────────────────────────────────────────────────────────
+# Traefik ACME (SSL Certificates)
+# ─────────────────────────────────────────────────────────────
+traefik/acme.json
+
+# ─────────────────────────────────────────────────────────────
+# Docker Named Volumes (if inadvertently created locally)
+# ─────────────────────────────────────────────────────────────
+moodle-db-data/
+moodle-data/
+opensis-db-data/
+opensis-data/
+
+# Some folks also add Docker Compose override files
+docker-compose.override.yml
+
+# ─────────────────────────────────────────────────────────────
+# OS or Editor-Specific Files
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ─────────────────────────────────────────────────────────────
+# Logs & Other Cache Files
+# ─────────────────────────────────────────────────────────────
+*.log
+logs/
+cache/
+
+# ─────────────────────────────────────────────────────────────
+# opensis (School Management System) Files
+# downloaded the latest version from https://github.com/OS4ED/openSIS-Classic
+opensis/

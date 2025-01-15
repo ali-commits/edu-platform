@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # Traefik Reverse Proxy
+  # ─────────────────────────────────────────────────────────────────
+  traefik:
+    image: traefik:2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/letsencrypt/acme.json
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+
+      # ─── Traefik Dashboard ─────────────────────────────────────
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+      # ─── Global HTTP→HTTPS redirect ────────────────────────────
+      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.*}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Moodle's Database (PostgreSQL)
+  # ─────────────────────────────────────────────────────────────────
+  moodle-db:
+    image: postgres:${MOODLE_DB_VERSION}
+    container_name: moodle-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MOODLE_DB_NAME}
+      POSTGRES_USER: ${MOODLE_DB_USER}
+      POSTGRES_PASSWORD: ${MOODLE_DB_PASS}
+    volumes:
+      - moodle-db-data:/var/lib/postgresql/data
+    networks:
+      - web
+
+  # ─────────────────────────────────────────────────────────────────
+  # Moodle LMS
+  # ─────────────────────────────────────────────────────────────────
+  moodle:
+    image: bitnami/moodle:${MOODLE_VERSION}
+    container_name: moodle
+    restart: unless-stopped
+    environment:
+      MOODLE_DATABASE_TYPE: pgsql
+      MOODLE_DATABASE_HOST: moodle-db
+      MOODLE_DATABASE_PORT_NUMBER: 5432
+      MOODLE_DATABASE_USER: ${MOODLE_DB_USER}
+      MOODLE_DATABASE_PASSWORD: ${MOODLE_DB_PASS}
+      MOODLE_DATABASE_NAME: ${MOODLE_DB_NAME}
+
+      # Optional initial Moodle setup variables
+      MOODLE_SITE_NAME: "${MOODLE_SITE_NAME}"
+      MOODLE_USERNAME: "${MOODLE_ADMIN_USER}"
+      MOODLE_PASSWORD: "${MOODLE_ADMIN_PASS}"
+      MOODLE_EMAIL: "${MOODLE_ADMIN_EMAIL}"
+
+    networks:
+      - web
+    volumes:
+      - moodle-data:/bitnami/moodle
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.moodle.rule=Host(`${MOODLE_DOMAIN}`)"
+      - "traefik.http.routers.moodle.entrypoints=websecure"
+      - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
+
+  # ─────────────────────────────────────────────────────────────────
+  # openSIS Database (MariaDB)
+  # ─────────────────────────────────────────────────────────────────
+  opensis-db:
+    image: mariadb:${OPENSIS_DB_VERSION}
+    container_name: opensis-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${OPENSIS_DB_NAME}
+      MYSQL_USER: ${OPENSIS_DB_USER}
+      MYSQL_PASSWORD: ${OPENSIS_DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${OPENSIS_DB_ROOT_PASS}
+    volumes:
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf
+      - opensis-db-data:/var/lib/mysql
+    networks:
+      - web
+
+  # ─────────────────────────────────────────────────────────────────
+  # openSIS (Custom Build)
+  # ─────────────────────────────────────────────────────────────────
+  opensis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opensis-custom
+    container_name: opensis
+    restart: unless-stopped
+    environment:
+      DB_HOST: opensis-db
+      DB_NAME: ${OPENSIS_DB_NAME}
+      DB_USER: ${OPENSIS_DB_USER}
+      DB_PASS: ${OPENSIS_DB_PASS}
+    networks:
+      - web
+    volumes:
+      - opensis-data:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensis.rule=Host(`${OPENSIS_DOMAIN}`)"
+      - "traefik.http.routers.opensis.entrypoints=websecure"
+      - "traefik.http.routers.opensis.tls.certresolver=letsencrypt"
+
+# ─────────────────────────────────────────────────────────────────
+# Named Volumes
+# ─────────────────────────────────────────────────────────────────
+volumes:
+  moodle-db-data:
+  moodle-data:
+  opensis-db-data:
+  opensis-data:
+
+# ─────────────────────────────────────────────────────────────────
+# Docker Network
+# ─────────────────────────────────────────────────────────────────
+networks:
+  web:
+    # external: true
