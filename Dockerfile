@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     a2enmod rewrite
 
 # Clone openSIS
-COPY opensis /var/www/html/
+COPY openSIS-Classic /var/www/html/
 
 # Set Permissions
 RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
