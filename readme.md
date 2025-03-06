@@ -36,7 +36,7 @@ A comprehensive Docker-based deployment solution for educational institutions, f
 
 3. Set up SSL certificate storage:
    ```bash
-   chmod 600 traefik/acme.json
+   sh init-acme.sh
    ```
 
 4. Configure your environment:
