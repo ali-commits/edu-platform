@@ -18,7 +18,7 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      test: ["CMD", "traefik", "healthcheck", "--ping", "--ping.entrypoint=ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,7 +37,7 @@ services:
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=traefik-auth"
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$9yu5hkml$$5Hl.OJXmF9DTrXIQYgZYl0" # admin:secure_password
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$9yu5hkml$$5Hl.OJXmF9DTrXIQYgZYl0"
 
       # ─── Global HTTP→HTTPS redirect ────────────────────────────
       - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.*}`)"
@@ -76,7 +76,7 @@ services:
   # Moodle LMS
   # ─────────────────────────────────────────────────────────────────
   moodle:
-    image: bitnami/moodle:4.5.2 # Specific version instead of latest
+    image: bitnami/moodle:${MOODLE_VERSION} # Specific version instead of latest
     container_name: moodle
     restart: unless-stopped
     depends_on:
@@ -101,7 +101,7 @@ services:
     volumes:
       - moodle-data:/bitnami/moodle
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/login/index.php"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

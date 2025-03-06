@@ -3,6 +3,16 @@ entryPoints:
     address: ":80"
   websecure:
     address: ":443"
+  ping:
+    address: ":8082"
+
+# Enable ping for health checks
+ping: {}
+
+# Enable API for dashboard
+api:
+  dashboard: true
+  insecure: false
 
 providers:
   docker:
