@@ -17,6 +17,17 @@ services:
       - ./traefik/acme.json:/letsencrypt/acme.json
     networks:
       - web
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     labels:
       - "traefik.enable=true"
 
@@ -25,6 +36,8 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$9yu5hkml$$5Hl.OJXmF9DTrXIQYgZYl0" # admin:secure_password
 
       # ─── Global HTTP→HTTPS redirect ────────────────────────────
       - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.*}`)"
@@ -47,14 +60,28 @@ services:
       - moodle-db-data:/var/lib/postgresql/data
     networks:
       - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MOODLE_DB_USER} -d ${MOODLE_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   # ─────────────────────────────────────────────────────────────────
   # Moodle LMS
   # ─────────────────────────────────────────────────────────────────
   moodle:
-    image: bitnami/moodle:${MOODLE_VERSION}
+    image: bitnami/moodle:4.5.2 # Specific version instead of latest
     container_name: moodle
     restart: unless-stopped
+    depends_on:
+      moodle-db:
+        condition: service_healthy
     environment:
       MOODLE_DATABASE_TYPE: pgsql
       MOODLE_DATABASE_HOST: moodle-db
@@ -73,6 +100,17 @@ services:
       - web
     volumes:
       - moodle-data:/bitnami/moodle
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.moodle.rule=Host(`${MOODLE_DOMAIN}`)"
@@ -96,6 +134,17 @@ services:
       - opensis-db-data:/var/lib/mysql
     networks:
       - web
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${OPENSIS_DB_USER}", "-p${OPENSIS_DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   # ─────────────────────────────────────────────────────────────────
   # openSIS (Custom Build)
@@ -106,6 +155,9 @@ services:
       dockerfile: Dockerfile
     container_name: opensis
     restart: unless-stopped
+    depends_on:
+      opensis-db:
+        condition: service_healthy
     environment:
       DB_HOST: opensis-db
       DB_NAME: ${OPENSIS_DB_NAME}
@@ -115,6 +167,17 @@ services:
       - web
     volumes:
       - opensis-data:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.opensis.rule=Host(`${OPENSIS_DOMAIN}`)"
@@ -135,4 +198,4 @@ volumes:
 # ─────────────────────────────────────────────────────────────────
 networks:
   web:
-    # external: true
+    name: web
