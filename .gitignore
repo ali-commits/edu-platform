@@ -3,6 +3,7 @@
 # ─────────────────────────────────────────────────────────────
 # We typically don't want to commit real passwords or secrets
 .env
+.env.demo
 
 # ─────────────────────────────────────────────────────────────
 # Traefik ACME (SSL Certificates)
@@ -16,6 +17,14 @@ moodle-db-data/
 moodle-data/
 opensis-db-data/
 opensis-data/
+rosario-db-data/
+rosario-data/
+moodle-db-demo-data/
+moodle-demo-data/
+opensis-db-demo-data/
+opensis-demo-data/
+rosario-db-demo-data/
+rosario-demo-data/
 
 # Some folks also add Docker Compose override files
 docker-compose.override.yml

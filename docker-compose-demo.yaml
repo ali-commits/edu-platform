@@ -1,0 +1,189 @@
+version: '3.8'
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # Moodle's Database (PostgreSQL) - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  moodle-db-demo:
+    image: postgres:${MOODLE_DB_VERSION}
+    container_name: moodle-db-demo
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MOODLE_DEMO_DB_NAME}
+      POSTGRES_USER: ${MOODLE_DEMO_DB_USER}
+      POSTGRES_PASSWORD: ${MOODLE_DEMO_DB_PASS}
+    volumes:
+      - moodle-db-demo-data:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MOODLE_DEMO_DB_USER} -d ${MOODLE_DEMO_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────
+  # Moodle LMS - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  moodle-demo:
+    image: bitnami/moodle:${MOODLE_VERSION}
+    container_name: moodle-demo
+    restart: unless-stopped
+    depends_on:
+      moodle-db-demo:
+        condition: service_healthy
+    environment:
+      MOODLE_DATABASE_TYPE: pgsql
+      MOODLE_DATABASE_HOST: moodle-db-demo
+      MOODLE_DATABASE_PORT_NUMBER: 5432
+      MOODLE_DATABASE_USER: ${MOODLE_DEMO_DB_USER}
+      MOODLE_DATABASE_PASSWORD: ${MOODLE_DEMO_DB_PASS}
+      MOODLE_DATABASE_NAME: ${MOODLE_DEMO_DB_NAME}
+
+      # Optional initial Moodle setup variables
+      MOODLE_SITE_NAME: "${MOODLE_DEMO_SITE_NAME}"
+      MOODLE_USERNAME: "${MOODLE_DEMO_ADMIN_USER}"
+      MOODLE_PASSWORD: "${MOODLE_DEMO_ADMIN_PASS}"
+      MOODLE_EMAIL: "${MOODLE_DEMO_ADMIN_EMAIL}"
+
+    networks:
+      - web
+    volumes:
+      - moodle-demo-data:/bitnami/moodle
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.moodle-demo.rule=Host(`${MOODLE_DEMO_DOMAIN}`)"
+      - "traefik.http.routers.moodle-demo.entrypoints=websecure"
+      - "traefik.http.routers.moodle-demo.tls.certresolver=letsencrypt"
+
+  # ─────────────────────────────────────────────────────────────────
+  # openSIS Database (MariaDB) - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  opensis-db-demo:
+    image: mariadb:${OPENSIS_DB_VERSION}
+    container_name: opensis-db-demo
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${OPENSIS_DEMO_DB_NAME}
+      MYSQL_USER: ${OPENSIS_DEMO_DB_USER}
+      MYSQL_PASSWORD: ${OPENSIS_DEMO_DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${OPENSIS_DEMO_DB_ROOT_PASS}
+    volumes:
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf
+      - opensis-db-demo-data:/var/lib/mysql
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${OPENSIS_DEMO_DB_USER}", "-p${OPENSIS_DEMO_DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────
+  # openSIS (Custom Build) - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  opensis-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opensis-demo
+    restart: unless-stopped
+    depends_on:
+      opensis-db-demo:
+        condition: service_healthy
+    environment:
+      DB_HOST: opensis-db-demo
+      DB_NAME: ${OPENSIS_DEMO_DB_NAME}
+      DB_USER: ${OPENSIS_DEMO_DB_USER}
+      DB_PASS: ${OPENSIS_DEMO_DB_PASS}
+    networks:
+      - web
+    volumes:
+      - opensis-demo-data:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensis-demo.rule=Host(`${OPENSIS_DEMO_DOMAIN}`)"
+      - "traefik.http.routers.opensis-demo.entrypoints=websecure"
+      - "traefik.http.routers.opensis-demo.tls.certresolver=letsencrypt"
+
+  # ─────────────────────────────────────────────────────────────────
+  # RosarioSIS Database (PostgreSQL) - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  rosario-db-demo:
+    image: postgres:${ROSARIO_DB_VERSION}
+    container_name: rosario-db-demo
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ROSARIO_DEMO_DB_NAME}
+      POSTGRES_USER: ${ROSARIO_DEMO_DB_USER}
+      POSTGRES_PASSWORD: ${ROSARIO_DEMO_DB_PASS}
+    volumes:
+      - rosario-db-demo-data:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ROSARIO_DEMO_DB_USER} -d ${ROSARIO_DEMO_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────
+  # RosarioSIS - DEMO
+  # ─────────────────────────────────────────────────────────────────
+  rosario-demo:
+    image: rosariosis/rosariosis:master
+    container_name: rosario-demo
+    restart: unless-stopped
+    depends_on:
+      rosario-db-demo:
+        condition: service_healthy
+    environment:
+      PGHOST: ${ROSARIO_DEMO_DB_HOST}
+      PGDATABASE: ${ROSARIO_DEMO_DB_NAME}
+      PGUSER: ${ROSARIO_DEMO_DB_USER}
+      PGPASSWORD: ${ROSARIO_DEMO_DB_PASS}
+      ROSARIOSIS_ADMIN_EMAIL: ${ROSARIO_DEMO_ADMIN_EMAIL}
+    networks:
+      - web
+    volumes:
+      - rosario-demo-data:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rosario-demo.rule=Host(`${ROSARIO_DEMO_DOMAIN}`)"
+      - "traefik.http.routers.rosario-demo.entrypoints=websecure"
+      - "traefik.http.routers.rosario-demo.tls.certresolver=letsencrypt"
+
+# ─────────────────────────────────────────────────────────────────
+# Named Volumes for Demo Environment
+# ─────────────────────────────────────────────────────────────────
+volumes:
+  moodle-db-demo-data:
+  moodle-demo-data:
+  opensis-db-demo-data:
+  opensis-demo-data:
+  rosario-db-demo-data:
+  rosario-demo-data:
+
+# ─────────────────────────────────────────────────────────────────
+# Docker Network (reusing the existing network)
+# ─────────────────────────────────────────────────────────────────
+networks:
+  web:
+    external: true
