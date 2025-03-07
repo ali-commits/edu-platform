@@ -31,28 +31,23 @@ A comprehensive Docker-based deployment solution for educational institutions, f
    cd edu-platform
    ```
 
-2. Download openSIS:
-   ```bash
-   git clone https://github.com/OS4ED/openSIS-Classic.git opensis
-   ```
-
-3. Set up SSL certificate storage:
-   ```bash
-   sh init-acme.sh
-   ```
-
-4. Configure your environment:
+2. Configure your environment:
    ```bash
    cp .env.example .env
    # Edit .env with your settings
    ```
 
-5. Start the services:
+3. Make the service manager script executable:
    ```bash
-   docker compose up -d
+   chmod +x service-manager.sh
    ```
 
-6. (Optional) Set up the demo environment:
+4. Start the services (this will automatically clone openSIS-Classic and initialize acme.json):
+   ```bash
+   ./service-manager.sh start
+   ```
+
+5. (Optional) Set up the demo environment:
    ```bash
    # Make the demo manager script executable
    chmod +x demo-manager.sh
@@ -102,6 +97,54 @@ Copy `.env.example` to `.env.demo` or use the provided `.env.demo` file and conf
 3. **Admin Credentials**:
    - Demo admin accounts for each service
    - Default strong passwords provided
+
+## Service Manager
+
+The service manager script (`service-manager.sh`) provides a comprehensive solution for managing the main services, including backup and restore functionality.
+
+### Managing the Main Services
+
+Use the included `service-manager.sh` script to manage the main services:
+
+```bash
+# Start all services (automatically clones openSIS-Classic if needed and initializes acme.json)
+./service-manager.sh start
+
+# Stop all services
+./service-manager.sh stop
+
+# Restart all services
+./service-manager.sh restart
+
+# Check status of services
+./service-manager.sh status
+
+# View logs from services
+./service-manager.sh logs [service-name]
+
+# Reset the environment (WARNING: Deletes all data)
+./service-manager.sh reset
+```
+
+### Backup and Restore
+
+The service manager includes built-in backup and restore functionality:
+
+```bash
+# Backup all services
+./service-manager.sh backup
+
+# Backup a specific service (e.g., moodle, opensis, or rosario)
+./service-manager.sh backup moodle
+
+# Restore all services from backup
+./service-manager.sh restore
+
+# Restore a specific service from backup
+./service-manager.sh restore moodle
+```
+
+When restoring, the script will display available backups and prompt you to select which ones to use.
 
 ## Demo Environment
 
@@ -157,6 +200,22 @@ Use the included `demo-manager.sh` script to manage the demo environment:
 
 ### Production Backups
 
+The recommended way to backup your production environment is to use the built-in backup functionality in the service manager:
+
+```bash
+# Backup all services
+./service-manager.sh backup
+
+# Backup a specific service
+./service-manager.sh backup moodle
+./service-manager.sh backup opensis
+./service-manager.sh backup rosario
+```
+
+This will create timestamped backups of both application data and database data for each service in the `backups` directory.
+
+Alternatively, you can use the manual methods below:
+
 1. **Database Backups**:
    ```bash
    # Moodle (PostgreSQL)
@@ -176,6 +235,20 @@ Use the included `demo-manager.sh` script to manage the demo environment:
    docker run --rm -v edu-platform_opensis-data:/source:ro -v $(pwd)/backups:/backup alpine tar czf /backup/opensis-data.tar.gz -C /source ./
    docker run --rm -v edu-platform_rosario-data:/source:ro -v $(pwd)/backups:/backup alpine tar czf /backup/rosario-data.tar.gz -C /source ./
    ```
+
+### Restoring from Backups
+
+To restore services from backups, use the service manager:
+
+```bash
+# Restore all services
+./service-manager.sh restore
+
+# Restore a specific service
+./service-manager.sh restore moodle
+```
+
+The script will display available backups and prompt you to select which ones to use.
 
 ### Demo Environment Backups
 
