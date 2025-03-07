@@ -48,3 +48,6 @@ cache/
 # opensis (School Management System) Files
 # downloaded the latest version from https://github.com/OS4ED/openSIS-Classic
 opensis/
+openSIS-Classic/
+backups/
+traefik/
