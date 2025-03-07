@@ -17,7 +17,11 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${MOODLE_DEMO_DB_USER} -d ${MOODLE_DEMO_DB_NAME}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${MOODLE_DEMO_DB_USER} -d ${MOODLE_DEMO_DB_NAME}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,10 +46,10 @@ services:
       MOODLE_DATABASE_NAME: ${MOODLE_DEMO_DB_NAME}
 
       # Optional initial Moodle setup variables
-      MOODLE_SITE_NAME: "${MOODLE_DEMO_SITE_NAME}"
-      MOODLE_USERNAME: "${MOODLE_DEMO_ADMIN_USER}"
-      MOODLE_PASSWORD: "${MOODLE_DEMO_ADMIN_PASS}"
-      MOODLE_EMAIL: "${MOODLE_DEMO_ADMIN_EMAIL}"
+      MOODLE_SITE_NAME: '${MOODLE_DEMO_SITE_NAME}'
+      MOODLE_USERNAME: '${MOODLE_DEMO_ADMIN_USER}'
+      MOODLE_PASSWORD: '${MOODLE_DEMO_ADMIN_PASS}'
+      MOODLE_EMAIL: '${MOODLE_DEMO_ADMIN_EMAIL}'
 
     networks:
       - web
@@ -53,10 +57,10 @@ services:
       - moodle-demo-data:/bitnami/moodle
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.moodle-demo.rule=Host(`${MOODLE_DEMO_DOMAIN}`)"
-      - "traefik.http.routers.moodle-demo.entrypoints=websecure"
-      - "traefik.http.routers.moodle-demo.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.moodle-demo.rule=Host(`${MOODLE_DEMO_DOMAIN}`)'
+      - 'traefik.http.routers.moodle-demo.entrypoints=websecure'
+      - 'traefik.http.routers.moodle-demo.tls.certresolver=letsencrypt'
 
   # ─────────────────────────────────────────────────────────────────
   # openSIS Database (MariaDB) - DEMO
@@ -67,8 +71,6 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${OPENSIS_DEMO_DB_NAME}
-      MYSQL_USER: ${OPENSIS_DEMO_DB_USER}
-      MYSQL_PASSWORD: ${OPENSIS_DEMO_DB_PASS}
       MYSQL_ROOT_PASSWORD: ${OPENSIS_DEMO_DB_ROOT_PASS}
     volumes:
       - ./my.cnf:/etc/mysql/conf.d/my.cnf
@@ -76,7 +78,16 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${OPENSIS_DEMO_DB_USER}", "-p${OPENSIS_DEMO_DB_PASS}"]
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u${OPENSIS_DEMO_DB_USER}',
+          '-p${OPENSIS_DEMO_DB_PASS}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,17 +115,17 @@ services:
     volumes:
       - opensis-demo-data:/var/www/html
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      test: ['CMD', 'curl', '-f', 'http://localhost/index.php']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.opensis-demo.rule=Host(`${OPENSIS_DEMO_DOMAIN}`)"
-      - "traefik.http.routers.opensis-demo.entrypoints=websecure"
-      - "traefik.http.routers.opensis-demo.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.opensis-demo.rule=Host(`${OPENSIS_DEMO_DOMAIN}`)'
+      - 'traefik.http.routers.opensis-demo.entrypoints=websecure'
+      - 'traefik.http.routers.opensis-demo.tls.certresolver=letsencrypt'
 
   # ─────────────────────────────────────────────────────────────────
   # RosarioSIS Database (PostgreSQL) - DEMO
@@ -132,7 +143,11 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ROSARIO_DEMO_DB_USER} -d ${ROSARIO_DEMO_DB_NAME}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${ROSARIO_DEMO_DB_USER} -d ${ROSARIO_DEMO_DB_NAME}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -159,16 +174,16 @@ services:
     volumes:
       - rosario-demo-data:/var/www/html
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      test: ['CMD', 'curl', '-f', 'http://localhost/index.php']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rosario-demo.rule=Host(`${ROSARIO_DEMO_DOMAIN}`)"
-      - "traefik.http.routers.rosario-demo.entrypoints=websecure"
-      - "traefik.http.routers.rosario-demo.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.rosario-demo.rule=Host(`${ROSARIO_DEMO_DOMAIN}`)'
+      - 'traefik.http.routers.rosario-demo.entrypoints=websecure'
+      - 'traefik.http.routers.rosario-demo.tls.certresolver=letsencrypt'
 
 # ─────────────────────────────────────────────────────────────────
 # Named Volumes for Demo Environment

@@ -9,8 +9,8 @@ services:
     container_name: traefik
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/traefik.yml:ro
@@ -18,28 +18,29 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping", "--ping.entrypoint=ping"]
+      test:
+        ['CMD', 'traefik', 'healthcheck', '--ping', '--ping.entrypoint=ping']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
     labels:
-      - "traefik.enable=true"
+      - 'traefik.enable=true'
 
       # ─── Traefik Dashboard ─────────────────────────────────────
-      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.middlewares=traefik-auth"
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$9yu5hkml$$5Hl.OJXmF9DTrXIQYgZYl0"
+      - 'traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)'
+      - 'traefik.http.routers.traefik.entrypoints=websecure'
+      - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.middlewares=traefik-auth'
+      - 'traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$9yu5hkml$$5Hl.OJXmF9DTrXIQYgZYl0'
 
       # ─── Global HTTP→HTTPS redirect ────────────────────────────
-      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.*}`)"
-      - "traefik.http.routers.http-catchall.entrypoints=web"
-      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - 'traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.*}`)'
+      - 'traefik.http.routers.http-catchall.entrypoints=web'
+      - 'traefik.http.routers.http-catchall.middlewares=redirect-to-https'
+      - 'traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https'
 
   # ─────────────────────────────────────────────────────────────────
   # Moodle's Database (PostgreSQL)
@@ -57,12 +58,12 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${MOODLE_DB_USER} -d ${MOODLE_DB_NAME}"]
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${MOODLE_DB_USER} -d ${MOODLE_DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
 
   # ─────────────────────────────────────────────────────────────────
   # Moodle LMS
@@ -83,10 +84,10 @@ services:
       MOODLE_DATABASE_NAME: ${MOODLE_DB_NAME}
 
       # Optional initial Moodle setup variables
-      MOODLE_SITE_NAME: "${MOODLE_SITE_NAME}"
-      MOODLE_USERNAME: "${MOODLE_ADMIN_USER}"
-      MOODLE_PASSWORD: "${MOODLE_ADMIN_PASS}"
-      MOODLE_EMAIL: "${MOODLE_ADMIN_EMAIL}"
+      MOODLE_SITE_NAME: '${MOODLE_SITE_NAME}'
+      MOODLE_USERNAME: '${MOODLE_ADMIN_USER}'
+      MOODLE_PASSWORD: '${MOODLE_ADMIN_PASS}'
+      MOODLE_EMAIL: '${MOODLE_ADMIN_EMAIL}'
 
     networks:
       - web
@@ -94,10 +95,10 @@ services:
       - moodle-data:/bitnami/moodle
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.moodle.rule=Host(`${MOODLE_DOMAIN}`)"
-      - "traefik.http.routers.moodle.entrypoints=websecure"
-      - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.moodle.rule=Host(`${MOODLE_DOMAIN}`)'
+      - 'traefik.http.routers.moodle.entrypoints=websecure'
+      - 'traefik.http.routers.moodle.tls.certresolver=letsencrypt'
 
   # ─────────────────────────────────────────────────────────────────
   # openSIS Database (MariaDB)
@@ -108,8 +109,6 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${OPENSIS_DB_NAME}
-      MYSQL_USER: ${OPENSIS_DB_USER}
-      MYSQL_PASSWORD: ${OPENSIS_DB_PASS}
       MYSQL_ROOT_PASSWORD: ${OPENSIS_DB_ROOT_PASS}
     volumes:
       - ./my.cnf:/etc/mysql/conf.d/my.cnf
@@ -117,12 +116,20 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${OPENSIS_DB_USER}", "-p${OPENSIS_DB_PASS}"]
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u${OPENSIS_DB_USER}',
+          '-p${OPENSIS_DB_PASS}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
 
   # ─────────────────────────────────────────────────────────────────
   # openSIS (Custom Build)
@@ -146,17 +153,17 @@ services:
     volumes:
       - opensis-data:/var/www/html
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      test: ['CMD', 'curl', '-f', 'http://localhost/index.php']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.opensis.rule=Host(`${OPENSIS_DOMAIN}`)"
-      - "traefik.http.routers.opensis.entrypoints=websecure"
-      - "traefik.http.routers.opensis.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.opensis.rule=Host(`${OPENSIS_DOMAIN}`)'
+      - 'traefik.http.routers.opensis.entrypoints=websecure'
+      - 'traefik.http.routers.opensis.tls.certresolver=letsencrypt'
 
   # ─────────────────────────────────────────────────────────────────
   # RosarioSIS Database (PostgreSQL)
@@ -174,7 +181,8 @@ services:
     networks:
       - web
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ROSARIO_DB_USER} -d ${ROSARIO_DB_NAME}"]
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${ROSARIO_DB_USER} -d ${ROSARIO_DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -201,16 +209,16 @@ services:
     volumes:
       - rosario-data:/var/www/html
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      test: ['CMD', 'curl', '-f', 'http://localhost/index.php']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rosario.rule=Host(`${ROSARIO_DOMAIN}`)"
-      - "traefik.http.routers.rosario.entrypoints=websecure"
-      - "traefik.http.routers.rosario.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.rosario.rule=Host(`${ROSARIO_DOMAIN}`)'
+      - 'traefik.http.routers.rosario.entrypoints=websecure'
+      - 'traefik.http.routers.rosario.tls.certresolver=letsencrypt'
 
 # ─────────────────────────────────────────────────────────────────
 # Named Volumes

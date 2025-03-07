@@ -36,11 +36,15 @@ show_usage() {
 start_demo() {
   echo -e "${GREEN}Starting demo environment...${NC}"
   docker compose -f docker-compose-demo.yaml --env-file .env.demo up -d
+
+  # Source the .env.demo file to get the domain variables
+  source .env.demo
+
   echo -e "${GREEN}Demo environment started!${NC}"
   echo -e "Demo services are available at:"
-  echo -e "  - openSIS: ${YELLOW}https://\${OPENSIS_DEMO_DOMAIN}${NC}"
-  echo -e "  - Moodle: ${YELLOW}https://\${MOODLE_DEMO_DOMAIN}${NC}"
-  echo -e "  - RosarioSIS: ${YELLOW}https://\${ROSARIO_DEMO_DOMAIN}${NC}"
+  echo -e "  - openSIS: ${YELLOW}https://${OPENSIS_DEMO_DOMAIN}${NC}"
+  echo -e "  - Moodle: ${YELLOW}https://${MOODLE_DEMO_DOMAIN}${NC}"
+  echo -e "  - RosarioSIS: ${YELLOW}https://${ROSARIO_DEMO_DOMAIN}${NC}"
 }
 
 # Function to stop the demo environment
