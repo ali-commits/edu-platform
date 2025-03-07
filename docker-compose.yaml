@@ -158,6 +158,60 @@ services:
       - "traefik.http.routers.opensis.entrypoints=websecure"
       - "traefik.http.routers.opensis.tls.certresolver=letsencrypt"
 
+  # ─────────────────────────────────────────────────────────────────
+  # RosarioSIS Database (PostgreSQL)
+  # ─────────────────────────────────────────────────────────────────
+  rosario-db:
+    image: postgres:${ROSARIO_DB_VERSION}
+    container_name: rosario-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ROSARIO_DB_NAME}
+      POSTGRES_USER: ${ROSARIO_DB_USER}
+      POSTGRES_PASSWORD: ${ROSARIO_DB_PASS}
+    volumes:
+      - rosario-db-data:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ROSARIO_DB_USER} -d ${ROSARIO_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────
+  # RosarioSIS
+  # ─────────────────────────────────────────────────────────────────
+  rosario:
+    image: rosariosis/rosariosis:master
+    container_name: rosario
+    restart: unless-stopped
+    depends_on:
+      rosario-db:
+        condition: service_healthy
+    environment:
+      PGHOST: ${ROSARIO_DB_HOST}
+      PGDATABASE: ${ROSARIO_DB_NAME}
+      PGUSER: ${ROSARIO_DB_USER}
+      PGPASSWORD: ${ROSARIO_DB_PASS}
+      ROSARIOSIS_ADMIN_EMAIL: ${ROSARIO_ADMIN_EMAIL}
+    networks:
+      - web
+    volumes:
+      - rosario-data:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rosario.rule=Host(`${ROSARIO_DOMAIN}`)"
+      - "traefik.http.routers.rosario.entrypoints=websecure"
+      - "traefik.http.routers.rosario.tls.certresolver=letsencrypt"
+
 # ─────────────────────────────────────────────────────────────────
 # Named Volumes
 # ─────────────────────────────────────────────────────────────────
@@ -166,6 +220,8 @@ volumes:
   moodle-data:
   opensis-db-data:
   opensis-data:
+  rosario-db-data:
+  rosario-data:
 
 # ─────────────────────────────────────────────────────────────────
 # Docker Network
