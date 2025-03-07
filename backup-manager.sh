@@ -343,8 +343,6 @@ install_cron_jobs() {
     echo "0 1 * * * $SCRIPT_DIR/backup-manager.sh daily"
     echo "0 2 * * 0 $SCRIPT_DIR/backup-manager.sh weekly"
     echo "0 3 1 * * $SCRIPT_DIR/backup-manager.sh monthly"
-    echo ""
-    log "INFO" "Alternatively, you can use the 'run-scheduler' command to run a background scheduler."
   fi
 }
 
@@ -380,109 +378,6 @@ remove_cron_jobs() {
     echo "0 1 * * * $SCRIPT_DIR/backup-manager.sh daily"
     echo "0 2 * * 0 $SCRIPT_DIR/backup-manager.sh weekly"
     echo "0 3 1 * * $SCRIPT_DIR/backup-manager.sh monthly"
-  fi
-}
-
-# Function to run a background scheduler
-run_scheduler() {
-  display_header "Running Background Scheduler"
-  log "INFO" "Starting background scheduler for automated backups..."
-
-  # Create a scheduler script
-  local scheduler_script="${SCRIPT_DIR}/backup-scheduler.sh"
-
-  cat > "$scheduler_script" << 'EOF'
-#!/bin/bash
-
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_MANAGER="${SCRIPT_DIR}/backup-manager.sh"
-LOG_FILE="${SCRIPT_DIR}/backup-scheduler.log"
-
-# Function to log messages
-log() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
-}
-
-log "Backup scheduler started"
-
-# Initialize last run times
-last_daily_run=0
-last_weekly_run=0
-last_monthly_run=0
-
-# Main loop
-while true; do
-  current_time=$(date +%s)
-  current_hour=$(date +%H)
-  current_day=$(date +%u)  # 1-7, 1 is Monday
-  current_date=$(date +%d) # Day of month
-
-  # Daily backup at 1:00 AM
-  if [ "$current_hour" = "01" ] && [ $((current_time - last_daily_run)) -gt 82800 ]; then # 23 hours
-    log "Running daily backup"
-    "$BACKUP_MANAGER" daily >> "$LOG_FILE" 2>&1
-    last_daily_run=$current_time
-  fi
-
-  # Weekly backup at 2:00 AM on Sunday (day 7)
-  if [ "$current_hour" = "02" ] && [ "$current_day" = "7" ] && [ $((current_time - last_weekly_run)) -gt 604800 ]; then # 7 days
-    log "Running weekly backup"
-    "$BACKUP_MANAGER" weekly >> "$LOG_FILE" 2>&1
-    last_weekly_run=$current_time
-  fi
-
-  # Monthly backup at 3:00 AM on the 1st day of the month
-  if [ "$current_hour" = "03" ] && [ "$current_date" = "01" ] && [ $((current_time - last_monthly_run)) -gt 2592000 ]; then # 30 days
-    log "Running monthly backup"
-    "$BACKUP_MANAGER" monthly >> "$LOG_FILE" 2>&1
-    last_monthly_run=$current_time
-  fi
-
-  # Sleep for 5 minutes
-  sleep 300
-done
-EOF
-
-  # Make the scheduler script executable
-  chmod +x "$scheduler_script"
-
-  # Start the scheduler in the background
-  nohup "$scheduler_script" > /dev/null 2>&1 &
-
-  # Save the PID
-  local scheduler_pid=$!
-  echo "$scheduler_pid" > "${SCRIPT_DIR}/backup-scheduler.pid"
-
-  log "INFO" "Background scheduler started with PID $scheduler_pid"
-  log "INFO" "Scheduler will run:"
-  log "INFO" "  - Daily backup: 1:00 AM every day"
-  log "INFO" "  - Weekly backup: 2:00 AM every Sunday"
-  log "INFO" "  - Monthly backup: 3:00 AM on the 1st day of each month"
-  log "INFO" "Logs are saved to: ${SCRIPT_DIR}/backup-scheduler.log"
-}
-
-# Function to stop the background scheduler
-stop_scheduler() {
-  display_header "Stopping Background Scheduler"
-  log "INFO" "Stopping background scheduler..."
-
-  local pid_file="${SCRIPT_DIR}/backup-scheduler.pid"
-
-  if [ -f "$pid_file" ]; then
-    local pid=$(cat "$pid_file")
-
-    if ps -p "$pid" > /dev/null; then
-      log "INFO" "Killing scheduler process with PID $pid"
-      kill "$pid"
-      rm "$pid_file"
-      log "INFO" "Background scheduler stopped"
-    else
-      log "WARN" "Scheduler process with PID $pid is not running"
-      rm "$pid_file"
-    fi
-  else
-    log "WARN" "Scheduler PID file not found. Scheduler may not be running."
   fi
 }
 
@@ -536,25 +431,6 @@ show_backup_status() {
     log "WARN" "Backup cron jobs are NOT installed"
     echo -e "  - Run '${YELLOW}$0 install-cron${NC}' to install cron jobs"
   fi
-
-  # Check if background scheduler is running
-  local pid_file="${SCRIPT_DIR}/backup-scheduler.pid"
-  if [ -f "$pid_file" ]; then
-    local pid=$(cat "$pid_file")
-    if ps -p "$pid" > /dev/null; then
-      log "INFO" "Background scheduler is running with PID $pid"
-      echo -e "  - Daily backup: 1:00 AM every day"
-      echo -e "  - Weekly backup: 2:00 AM every Sunday"
-      echo -e "  - Monthly backup: 3:00 AM on the 1st day of each month"
-      echo -e "  - Logs: ${SCRIPT_DIR}/backup-scheduler.log"
-    else
-      log "WARN" "Background scheduler PID file exists but process is not running"
-      echo -e "  - Run '${YELLOW}$0 run-scheduler${NC}' to start the scheduler"
-    fi
-  else
-    log "INFO" "Background scheduler is not running"
-    echo -e "  - Run '${YELLOW}$0 run-scheduler${NC}' to start the scheduler"
-  fi
 }
 
 # Function to show usage information
@@ -569,15 +445,12 @@ show_usage() {
   echo "  ${BOLD}monthly${NC}        - Perform monthly backup"
   echo "  ${BOLD}install-cron${NC}   - Install cron jobs for automated backups"
   echo "  ${BOLD}remove-cron${NC}    - Remove backup cron jobs"
-  echo "  ${BOLD}run-scheduler${NC}  - Run background scheduler for automated backups"
-  echo "  ${BOLD}stop-scheduler${NC} - Stop background scheduler"
   echo "  ${BOLD}status${NC}         - Show backup status"
   echo "  ${BOLD}help${NC}           - Show this help message"
   echo ""
   echo "Examples:"
   echo "  $0 daily                - Perform daily backup"
   echo "  $0 install-cron         - Install cron jobs for automated backups"
-  echo "  $0 run-scheduler        - Run background scheduler for automated backups"
   echo "  $0 status               - Show backup status"
 }
 
@@ -615,12 +488,6 @@ case "$1" in
     ;;
   remove-cron)
     remove_cron_jobs
-    ;;
-  run-scheduler)
-    run_scheduler
-    ;;
-  stop-scheduler)
-    stop_scheduler
     ;;
   status)
     show_backup_status

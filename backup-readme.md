@@ -6,8 +6,8 @@ This backup system provides automated daily, weekly, and monthly backups for the
 
 - **Scheduled Backups**: Daily, weekly, and monthly backups
 - **Retention Policies**: Automatically delete old backups based on configurable retention periods
-- **Multiple Automation Options**: Use cron jobs or a background scheduler
-- **Status Reporting**: View backup counts and scheduler status
+- **Cron-based Automation**: Use system cron jobs for reliable scheduling
+- **Status Reporting**: View backup counts and cron job status
 
 ## Configuration
 
@@ -40,8 +40,6 @@ The backup system is controlled by the `backup-manager.sh` script, which provide
 
 - `./backup-manager.sh install-cron` - Install cron jobs for automated backups
 - `./backup-manager.sh remove-cron` - Remove backup cron jobs
-- `./backup-manager.sh run-scheduler` - Run background scheduler for automated backups
-- `./backup-manager.sh stop-scheduler` - Stop background scheduler
 
 ### Other Commands
 
@@ -50,7 +48,7 @@ The backup system is controlled by the `backup-manager.sh` script, which provide
 
 ## Backup Schedule
 
-When using cron jobs or the background scheduler, backups are performed at the following times:
+When using cron jobs, backups are performed at the following times:
 
 - **Daily Backup**: 1:00 AM every day
 - **Weekly Backup**: 2:00 AM every Sunday
@@ -95,14 +93,11 @@ The main backup directory contains temporary backups created by the `service-man
 
 ## Logs
 
-The backup system logs its activity to the following files:
+The backup system logs its activity to the following file:
 
 - `backup-manager.log` - Log file for the backup-manager.sh script
-- `backup-scheduler.log` - Log file for the background scheduler
 
-## Automation Options
-
-### Cron Jobs
+## Automation with Cron Jobs
 
 To use cron jobs for automated backups, run:
 
@@ -112,18 +107,10 @@ To use cron jobs for automated backups, run:
 
 This will install cron jobs to run the daily, weekly, and monthly backups at the scheduled times.
 
-### Background Scheduler
-
-If cron is not available or you prefer to use a background process, you can run the background scheduler:
+To remove the cron jobs, run:
 
 ```bash
-./backup-manager.sh run-scheduler
-```
-
-This will start a background process that will run the daily, weekly, and monthly backups at the scheduled times. The scheduler will continue running until you stop it with:
-
-```bash
-./backup-manager.sh stop-scheduler
+./backup-manager.sh remove-cron
 ```
 
 ## Integration with Service Manager
