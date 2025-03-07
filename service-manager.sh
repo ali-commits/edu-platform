@@ -505,8 +505,10 @@ backup_all_services() {
 # Function to get available backups for a service
 get_available_backups() {
   local service=$1
-  local app_backups=($(ls -1 ${BACKUP_DIR}/${service}_backup_*.tar.gz 2>/dev/null))
-  local db_backups=($(ls -1 ${BACKUP_DIR}/${service}_db_backup_*.tar.gz 2>/dev/null))
+
+  # Use find instead of ls for more reliable output
+  local app_backups=($(find ${BACKUP_DIR} -name "${service}_backup_*.tar.gz" -type f | sort -r 2>/dev/null))
+  local db_backups=($(find ${BACKUP_DIR} -name "${service}_db_backup_*.tar.gz" -type f | sort -r 2>/dev/null))
 
   # Extract dates from filenames for better display
   local app_dates=()
@@ -524,10 +526,22 @@ get_available_backups() {
     db_dates+=("$formatted_date")
   done
 
-  echo "${app_backups[@]}"
-  echo "${db_backups[@]}"
-  echo "${app_dates[@]}"
-  echo "${db_dates[@]}"
+  # Return each backup path on a separate line with a special delimiter
+  for backup in "${app_backups[@]}"; do
+    echo "APP_BACKUP:$backup"
+  done
+
+  for backup in "${db_backups[@]}"; do
+    echo "DB_BACKUP:$backup"
+  done
+
+  for date in "${app_dates[@]}"; do
+    echo "APP_DATE:$date"
+  done
+
+  for date in "${db_dates[@]}"; do
+    echo "DB_DATE:$date"
+  done
 }
 
 # Function to restore a specific service with given backup files
@@ -626,27 +640,70 @@ restore_service_with_backups() {
   return 0
 }
 
+# Function to parse backup information from get_available_backups output
+parse_backup_info() {
+  local output="$1"
+  local app_backups=()
+  local db_backups=()
+  local app_dates=()
+  local db_dates=()
+
+  while IFS= read -r line; do
+    if [[ "$line" == APP_BACKUP:* ]]; then
+      app_backups+=("${line#APP_BACKUP:}")
+    elif [[ "$line" == DB_BACKUP:* ]]; then
+      db_backups+=("${line#DB_BACKUP:}")
+    elif [[ "$line" == APP_DATE:* ]]; then
+      app_dates+=("${line#APP_DATE:}")
+    elif [[ "$line" == DB_DATE:* ]]; then
+      db_dates+=("${line#DB_DATE:}")
+    fi
+  done <<< "$output"
+
+  echo "APP_BACKUPS_COUNT:${#app_backups[@]}"
+  echo "DB_BACKUPS_COUNT:${#db_backups[@]}"
+
+  for backup in "${app_backups[@]}"; do
+    echo "APP_BACKUP:$backup"
+  done
+
+  for backup in "${db_backups[@]}"; do
+    echo "DB_BACKUP:$backup"
+  done
+
+  for date in "${app_dates[@]}"; do
+    echo "APP_DATE:$date"
+  done
+
+  for date in "${db_dates[@]}"; do
+    echo "DB_DATE:$date"
+  done
+}
+
 # Function to display a unified selection interface for restoration
 select_backups_for_restoration() {
   local services=("${SERVICES[@]}")
   local selected_app_backups=()
   local selected_db_backups=()
   local service_has_backups=()
+  local services_to_restore=()
 
   display_header "Backup Restoration Selection"
 
   # Check which services have backups
   for service in "${services[@]}"; do
-    local backups_output=($(get_available_backups "$service"))
-    local app_backups=(${backups_output[0]})
-    local db_backups=(${backups_output[1]})
+    local backups_output=$(get_available_backups "$service")
+    local parsed_info=$(parse_backup_info "$backups_output")
 
-    if [ ${#app_backups[@]} -eq 0 ] || [ ${#db_backups[@]} -eq 0 ]; then
+    local app_count=$(echo "$parsed_info" | grep "APP_BACKUPS_COUNT:" | cut -d':' -f2)
+    local db_count=$(echo "$parsed_info" | grep "DB_BACKUPS_COUNT:" | cut -d':' -f2)
+
+    if [ "$app_count" -eq 0 ] || [ "$db_count" -eq 0 ]; then
       service_has_backups+=("false")
       log "INFO" "$service: No complete backups available"
     else
       service_has_backups+=("true")
-      log "INFO" "$service: $(( ${#app_backups[@]} )) application backups, $(( ${#db_backups[@]} )) database backups available"
+      log "INFO" "$service: $app_count application backups, $db_count database backups available"
     fi
   done
 
@@ -656,54 +713,78 @@ select_backups_for_restoration() {
     return 1
   fi
 
+  # First, ask about all services
   log "INFO" "Select which services to restore:"
 
   # For each service with backups, ask if user wants to restore it
-  local services_to_restore=()
   for i in "${!services[@]}"; do
     local service="${services[$i]}"
     if [ "${service_has_backups[$i]}" = "true" ]; then
       read -p "Restore $service? (y/n): " restore_choice
       if [[ $restore_choice == [yY] || $restore_choice == [yY][eE][sS] ]]; then
         services_to_restore+=("$service")
-
-        # Get backups for this service
-        local backups_output=($(get_available_backups "$service"))
-        local app_backups=(${backups_output[0]})
-        local db_backups=(${backups_output[1]})
-        local app_dates=(${backups_output[2]})
-        local db_dates=(${backups_output[3]})
-
-        display_header "Available Backups for $service"
-
-        echo -e "${YELLOW}Application backups:${NC}"
-        for j in "${!app_backups[@]}"; do
-          echo "$((j+1)). ${app_dates[$j]} ($(basename ${app_backups[$j]}))"
-        done
-
-        echo -e "\n${YELLOW}Database backups:${NC}"
-        for j in "${!db_backups[@]}"; do
-          echo "$((j+1)). ${db_dates[$j]} ($(basename ${db_backups[$j]}))"
-        done
-
-        # Select application backup
-        read -p "Select application backup number to restore: " app_choice
-        while [[ -z "$app_choice" || $app_choice -lt 1 || $app_choice -gt ${#app_backups[@]} ]]; do
-          log "ERROR" "Invalid selection. Please try again."
-          read -p "Select application backup number to restore: " app_choice
-        done
-
-        # Select database backup
-        read -p "Select database backup number to restore: " db_choice
-        while [[ -z "$db_choice" || $db_choice -lt 1 || $db_choice -gt ${#db_backups[@]} ]]; do
-          log "ERROR" "Invalid selection. Please try again."
-          read -p "Select database backup number to restore: " db_choice
-        done
-
-        selected_app_backups+=("${app_backups[$((app_choice-1))]}")
-        selected_db_backups+=("${db_backups[$((db_choice-1))]}")
       fi
     fi
+  done
+
+  # If no services were selected, exit
+  if [ ${#services_to_restore[@]} -eq 0 ]; then
+    log "INFO" "No services selected for restoration. Operation cancelled."
+    return 0
+  fi
+
+  # Now, for each selected service, handle backup selection
+  for service in "${services_to_restore[@]}"; do
+    # Get backups for this service
+    local backups_output=$(get_available_backups "$service")
+    local parsed_info=$(parse_backup_info "$backups_output")
+
+    # Get app backups and dates
+    local app_backups=()
+    local db_backups=()
+    local app_dates=()
+    local db_dates=()
+
+    while IFS= read -r line; do
+      if [[ "$line" == APP_BACKUP:* ]]; then
+        app_backups+=("${line#APP_BACKUP:}")
+      elif [[ "$line" == DB_BACKUP:* ]]; then
+        db_backups+=("${line#DB_BACKUP:}")
+      elif [[ "$line" == APP_DATE:* ]]; then
+        app_dates+=("${line#APP_DATE:}")
+      elif [[ "$line" == DB_DATE:* ]]; then
+        db_dates+=("${line#DB_DATE:}")
+      fi
+    done <<< "$parsed_info"
+
+    display_header "Available Backups for $service"
+
+    echo -e "${YELLOW}Application backups for $service:${NC}"
+    for j in "${!app_backups[@]}"; do
+      echo "$((j+1)). ${app_dates[$j]} ($(basename ${app_backups[$j]}))"
+    done
+
+    # Select application backup
+    read -p "Select application backup number to restore: " app_choice
+    while [[ -z "$app_choice" || $app_choice -lt 1 || $app_choice -gt ${#app_backups[@]} ]]; do
+      log "ERROR" "Invalid selection. Please try again."
+      read -p "Select application backup number to restore: " app_choice
+    done
+
+    echo -e "\n${YELLOW}Database backups for $service:${NC}"
+    for j in "${!db_backups[@]}"; do
+      echo "$((j+1)). ${db_dates[$j]} ($(basename ${db_backups[$j]}))"
+    done
+
+    # Select database backup
+    read -p "Select database backup number to restore: " db_choice
+    while [[ -z "$db_choice" || $db_choice -lt 1 || $db_choice -gt ${#db_backups[@]} ]]; do
+      log "ERROR" "Invalid selection. Please try again."
+      read -p "Select database backup number to restore: " db_choice
+    done
+
+    selected_app_backups+=("${app_backups[$((app_choice-1))]}")
+    selected_db_backups+=("${db_backups[$((db_choice-1))]}")
   done
 
   # If no services were selected, exit
@@ -783,19 +864,36 @@ restore_service() {
     return 1
   fi
 
-  # Check if service has backups
-  local backups_output=($(get_available_backups "$service"))
-  local app_backups=(${backups_output[0]})
-  local db_backups=(${backups_output[1]})
+  # Get backups for this service
+  local backups_output=$(get_available_backups "$service")
+  local parsed_info=$(parse_backup_info "$backups_output")
 
-  if [ ${#app_backups[@]} -eq 0 ] || [ ${#db_backups[@]} -eq 0 ]; then
+  # Extract backup information
+  local app_count=$(echo "$parsed_info" | grep "APP_BACKUPS_COUNT:" | cut -d':' -f2)
+  local db_count=$(echo "$parsed_info" | grep "DB_BACKUPS_COUNT:" | cut -d':' -f2)
+
+  if [ "$app_count" -eq 0 ] || [ "$db_count" -eq 0 ]; then
     log "ERROR" "No complete backups found for $service"
     return 1
   fi
 
-  # Get dates for better display
-  local app_dates=(${backups_output[2]})
-  local db_dates=(${backups_output[3]})
+  # Get app backups and dates
+  local app_backups=()
+  local db_backups=()
+  local app_dates=()
+  local db_dates=()
+
+  while IFS= read -r line; do
+    if [[ "$line" == APP_BACKUP:* ]]; then
+      app_backups+=("${line#APP_BACKUP:}")
+    elif [[ "$line" == DB_BACKUP:* ]]; then
+      db_backups+=("${line#DB_BACKUP:}")
+    elif [[ "$line" == APP_DATE:* ]]; then
+      app_dates+=("${line#APP_DATE:}")
+    elif [[ "$line" == DB_DATE:* ]]; then
+      db_dates+=("${line#DB_DATE:}")
+    fi
+  done <<< "$parsed_info"
 
   display_header "Restore $service Service"
 
